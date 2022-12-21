@@ -12,9 +12,6 @@ import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.{SearchHit, SearchHits}
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.slf4j.LoggerFactory
-import org.sunbird.dp.contentupdater.core.util.RestUtil
-import org.sunbird.dp.core.cache.{DataCache, RedisConnect}
-import org.sunbird.dp.core.serde.StringSerializationSchema
 import org.sunbird.dp.core.util.CassandraUtil
 import org.sunbird.notificationengine.domain.Event
 import org.sunbird.notificationengine.task.NotificationEngineEmailConfig
@@ -56,11 +53,6 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineEmai
 
   private[this] val logger = LoggerFactory.getLogger(classOf[LatestCourseEmailNotificationFunction])
 
-  private var dataCache: DataCache = new DataCache(courseConfig, new RedisConnect(courseConfig.metaRedisHost, courseConfig.metaRedisPort, courseConfig), courseConfig.relationCacheNode, List())
-  dataCache.init()
-  private var contentCache: DataCache = new DataCache(courseConfig, new RedisConnect(courseConfig.metaRedisHost, courseConfig.metaRedisPort, courseConfig), courseConfig.contentCacheNode, List())
-  contentCache.init()
-  private var restUtil: RestUtil =  new RestUtil()
   private var restApiUtil: RestApiUtil =  new RestApiUtil()
   var cassandraUtil: CassandraUtil = new CassandraUtil(courseConfig.dbHost, courseConfig.dbPort)
 
@@ -247,7 +239,6 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineEmai
   }
 
   def fetchEmailIdsFromUserES(excludeEmailsList: util.List[Any], params: util.Map[String, Any]): Boolean = {
-    val resultArray = new util.ArrayList[util.HashMap[String, Any]]
     var result = new util.HashMap[String, Any]()
     logger.info("Entering fetchEmailIdsFromUserES")
     try {

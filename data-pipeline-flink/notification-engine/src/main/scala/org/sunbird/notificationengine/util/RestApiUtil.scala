@@ -9,7 +9,6 @@ import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.DefaultHttpClient
 import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
-import java.util
 
 class RestApiUtil extends Serializable {
 

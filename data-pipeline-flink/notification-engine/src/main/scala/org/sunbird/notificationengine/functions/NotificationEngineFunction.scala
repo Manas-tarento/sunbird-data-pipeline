@@ -8,34 +8,22 @@ import org.slf4j.LoggerFactory
 import org.sunbird.dp.contentupdater.core.util.RestUtil
 import org.sunbird.dp.core.cache.{DataCache, RedisConnect}
 import org.sunbird.dp.core.job.{BaseProcessFunction, Metrics}
+import org.sunbird.dp.core.util.CassandraUtil
 import org.sunbird.notificationengine.domain.Event
 import org.sunbird.notificationengine.task.NotificationEngineEmailConfig
 
 import java.util.concurrent.CompletableFuture
 
-class NotificationEngineFunction(courseConfig: NotificationEngineEmailConfig,
-                                       )(implicit val mapTypeInfo: TypeInformation[Event])
+class NotificationEngineFunction(courseConfig: NotificationEngineEmailConfig)(implicit val mapTypeInfo: TypeInformation[Event])
   extends BaseProcessFunction[Event, Event](courseConfig) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[NotificationEngineFunction])
 
-  private var dataCache: DataCache = _
-  private var contentCache: DataCache = _
-  private var restUtil: RestUtil = _
-
-
-  override def metricsList() = List(courseConfig.dbUpdateCount, courseConfig.dbReadCount,
-    courseConfig.failedEventCount, courseConfig.batchSuccessCount,
-    courseConfig.skippedEventCount, courseConfig.cacheHitCount, courseConfig.cacheHitMissCount, courseConfig.certIssueEventsCount, courseConfig.apiHitFailedCount, courseConfig.apiHitSuccessCount, courseConfig.ignoredEventsCount, courseConfig.recomputeAggEventCount)
-
-
+  override def metricsList():List[String] = {
+    List()
+  }
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    dataCache = new DataCache(courseConfig, new RedisConnect(courseConfig.metaRedisHost, courseConfig.metaRedisPort, courseConfig), courseConfig.relationCacheNode, List())
-    dataCache.init()
-    contentCache = new DataCache(courseConfig, new RedisConnect(courseConfig.metaRedisHost, courseConfig.metaRedisPort, courseConfig), courseConfig.contentCacheNode, List())
-    contentCache.init()
-    restUtil = new RestUtil()
   }
 
   override def close(): Unit = {

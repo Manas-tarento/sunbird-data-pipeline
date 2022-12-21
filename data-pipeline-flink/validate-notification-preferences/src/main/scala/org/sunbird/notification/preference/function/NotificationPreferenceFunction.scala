@@ -13,10 +13,8 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.elasticsearch.index.query.{BoolQueryBuilder, QueryBuilders}
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.slf4j.LoggerFactory
-import org.sunbird.dp.contentupdater.core.util.RestUtil
-import org.sunbird.dp.core.cache.DataCache
 import org.sunbird.dp.core.job.{BaseProcessFunction, Metrics}
-import org.sunbird.dp.core.util.{CassandraUtil, JSONUtil}
+import org.sunbird.dp.core.util.CassandraUtil
 import org.sunbird.notification.preference.domain.Event
 import org.sunbird.notification.preference.task.NotificationPreferenceConfig
 import org.sunbird.notification.preference.util.IndexService
@@ -30,9 +28,6 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
   extends BaseProcessFunction[Event, Event](preferenceConfig) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[NotificationPreferenceFunction])
-
-  private var dataCache: DataCache = _
-  private var restUtil: RestUtil = _
 
   override def metricsList(): List[String] = {
     List()
@@ -127,7 +122,7 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
       case ex: Exception => {
         logger.info("Exception Occurs while getting users Notification Preference : ", ex.getMessage)
       }
-        return null
+        return  null
     }
   }
 
