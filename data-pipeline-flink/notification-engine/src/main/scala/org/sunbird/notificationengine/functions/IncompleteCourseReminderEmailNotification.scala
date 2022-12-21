@@ -149,8 +149,6 @@ class IncompleteCourseReminderEmailNotification(notificationConfig: Notification
     val excludeEmailsRow = cassandraUtil.find(query)
     val excludeEmailsList: java.util.List[Any] = new java.util.ArrayList[Any]()
     excludeEmailsRow.forEach(email=>excludeEmailsList.add(email.getString(0)))
-    logger.info("exclude email list from db "+excludeEmailsRow)
-    logger.info("exclude email list "+excludeEmailsList)
     userIds.forEach(id=>{
       val queryForUserDetails = QueryBuilder.select().column(notificationConfig.ID).column(notificationConfig.PROFILE_DETAILS_KEY).from(notificationConfig.dbSunbirdKeyspace, notificationConfig.TABLE_USER)
         .where(QueryBuilder.eq("id", id))
@@ -167,9 +165,7 @@ class IncompleteCourseReminderEmailNotification(notificationConfig: Notification
           val personalDetailsMap: java.util.HashMap[String, Any] =profileDetailsMap.get(notificationConfig.PERSONAL_DETAILS_KEY).asInstanceOf[util.HashMap[String,Any]]
           if(MapUtils.isNotEmpty(personalDetailsMap)){
             val primaryEmail: String = personalDetailsMap.get(notificationConfig.PRIMARY_EMAIL).toString
-            logger.info("checking email from exclude email list "+ !excludeEmailsList.contains(primaryEmail))
             if(StringUtils.isNotEmpty(primaryEmail) && !excludeEmailsList.contains(primaryEmail)){
-              logger.info("primary emails "+primaryEmail)
               val userId = userDetails.getString(notificationConfig.ID)
               var userCourseProgress = userCourseMap.get(userId)
               userCourseMap.remove(userId)
@@ -183,7 +179,6 @@ class IncompleteCourseReminderEmailNotification(notificationConfig: Notification
           logger.info(String.format("Error in get and set user email %s", e.getMessage()))
       }
     })
-    logger.info("useCourseMap "+userCourseMap)
   }
 
   def sendIncompleteCourseEmail(userCourseEntrySet: util.Set[Map.Entry[String, UserCourseProgressDetails]]): Unit = {

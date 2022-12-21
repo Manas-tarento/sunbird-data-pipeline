@@ -97,8 +97,8 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
 
   def initiateNotificationPreferenceCheck(userId: util.ArrayList[String]):util.ArrayList[String] = {
     try {
-      val index = new IndexService(preferenceConfig)
       logger.info("Entering checkNotificationPreferenceByUserId")
+      val index = new IndexService(preferenceConfig)
       val query: BoolQueryBuilder = QueryBuilders.boolQuery()
       val finalQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
       finalQuery.must(QueryBuilders.termsQuery(preferenceConfig.USERID, userId)).must(QueryBuilders.termQuery(preferenceConfig.latestCourseAlert,true)).must(query)
