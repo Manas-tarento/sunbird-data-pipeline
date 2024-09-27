@@ -7,26 +7,26 @@ import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.dp.core.job.BaseJobConfig
 import org.sunbird.dp.notification.domain.Event
 
-class NotificationEngineConfig(override val config: Config) extends BaseJobConfig(config, "notificationEngineJob"){
+class NotificationEngineConfig(override val config: Config) extends BaseJobConfig(config, "notificationEngineJob") {
   private val serialVersionUID = 2905979434303791379L
 
   implicit val mapTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Kafka Topics Configuration
-  val inputTopic: String = config.getString("kafka.input_topic")
+  val inputTopic: String = config.getString("kafka.notification.input.topic")
 
   val notification_Preference_Kafka_input_topic: String = config.getString("kafka.notification_preference_input.topic")
-  val key_serializer:String=config.getString("kafka-key.key_serializer")
-  val value_serializer:String=config.getString("kafka-key.value_serializer")
-  val bootstrap_servers:String=config.getString("kafka-key.bootstrap_servers")
+  val key_serializer: String = config.getString("kafka-key.key_serializer")
+  val value_serializer: String = config.getString("kafka-key.value_serializer")
+  val bootstrap_servers: String = config.getString("kafka-key.bootstrap_servers")
 
   //producer topic
-  val NOTIFICATION_JOB_TOPIC: String = config.getString("kafka.notification_job_topic")
+  val NOTIFICATION_JOB_TOPIC: String = config.getString("kafka.notification_job.topic")
 
   // rating specific
   val notificationEngineParallelism: Int = config.getInt("task.notification_engine_parallelism")
   val kafkaIssueTopic: String = config.getString("kafka.output.topic")
-  val BOOTSTRAP_SERVER_CONFIG:String=config.getString("kafka.bootstrap_server")
+  val BOOTSTRAP_SERVER_CONFIG: String = config.getString("kafka.bootstrap_server")
 
   val notificationEngineIssueEventSink = "notification-engine-issue-event-sink"
   val failedEventCount = "failed-event-count"
@@ -36,7 +36,7 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   //Cassandra
   val dbHost: String = config.getString("ext-cassandra.host")
   val dbPort: Int = config.getInt("ext-cassandra.port")
-  val EMAIL_RECORD_TABLE: String =config.getString("ext-cassandra.EMAIL_RECORD_TABLE")
+  val EMAIL_RECORD_TABLE: String = config.getString("ext-cassandra.EMAIL_RECORD_TABLE")
   val USER_CONTENT_DB_TABLE: String = config.getString("ext-cassandra.user_content_db_table")
   val dbCoursesKeyspace: String = config.getString("ext-cassandra.courses_keyspace")
   val dbSunbirdKeyspace: String = config.getString("ext-cassandra.keyspace")
@@ -68,28 +68,28 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   val _NAME = "_name"
   val _DURATION = "_duration"
   val _DESCRIPTION = "_description"
-  val new_courses_scheduler_time_gap=168
-  val new_courses_email_limit=8
+  val new_courses_scheduler_time_gap = 168
+  val new_courses_email_limit = 8
 
   //url
-  val KM_BASE_HOST: String =config.getString("url.km_base_host")
-  val content_search: String =config.getString("url.content_search")
-  val COURSE_URL: String =config.getString( "url.course_url")
-  val notification_event_endpoint:String=config.getString("url.notification_event_endpoint")
-  val notification_service_host:String=config.getString("url.notification_service_host")
+  val KM_BASE_HOST: String = config.getString("url.km_base_host")
+  val content_search: String = config.getString("url.content_search")
+  val COURSE_URL: String = config.getString("url.course_url")
+  val notification_event_endpoint: String = config.getString("url.notification_event_endpoint")
+  val notification_service_host: String = config.getString("url.notification_service_host")
   val OVERVIEW_BATCH_ID: String = config.getString("url.overview_batch")
   val SUNBIRD_USER_SEARCH_ENDPOINT: String = config.getString("url.sb_user_search")
   val SB_SERVICE_URL: String = config.getString("url.sb_service_url")
 
 
-  val MAIL_LIST:String=config.getString("mailList.recipient_new_course_email")
-  val SENDER_MAIL:String=config.getString("senderMail.sender_mail")
-  val NEW_COURSES = "newcourses"
+  val MAIL_LIST: String = config.getString("mailList.recipient_new_course_email")
+  val SENDER_MAIL: String = config.getString("senderMail.sender_mail")
+  val NEW_COURSES_TEMPLATE = "newcourses"
   val NEW_COURSES_MAIL_SUBJECT = "Check out exciting new courses that launched this week!"
   val NOTIFICATIONS = "notifications"
   val EMAIL = "email"
   val PARAMS = "params"
-  val MESSAGE="message";
+  val MESSAGE = "message";
 
   val EXCLUDE_USER_EMAILS = "exclude_user_emails"
   val STATUS = "status"
@@ -97,46 +97,46 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   val PROFILE_DETAILS = "profileDetails"
   val PERSONAL_DETAILS = "personalDetails";
   val PRIMARY_EMAIL = "primaryEmail"
-  val latest_courses_alert_content_min_limit=1
-  val latest_courses_alert_send_to_all_user:Boolean=config.getBoolean("const.latest_courses_alert_send_to_all_user")
-  val DATA="data"
-  val emailTemplate="emailTemplate"
-  val TEMPLATE="template"
-  val emailSubject="emailSubject"
-  val SUBJECT="subject"
-  val fields ="userId,profileDetails.personalDetails.primaryEmail"
-  val userId="_id"
-  val USERID="userId"
-  val IDS="ids"
+  val latest_courses_alert_content_min_limit = 1
+  val latest_courses_alert_send_to_all_user: Boolean = config.getBoolean("const.latest_courses_alert_send_to_all_user")
+  val DATA = "data"
+  val emailTemplate = "emailTemplate"
+  val TEMPLATE = "template"
+  val emailSubject = "emailSubject"
+  val SUBJECT = "subject"
+  val fields = "userId,profileDetails.personalDetails"
+  val userId = "_id"
+  val USERID = "userId"
+  val IDS = "ids"
   val BROAD_CAST_TOPIC_NOTIFICATION_MESSAGE = "BroadCast Topic Notification"
   val ACTOR_TYPE_VALUE = "System"
   val EID_VALUE = "BE_JOB_REQUEST"
-  val ACTION="action"
+  val ACTION = "action"
   val BROAD_CAST_TOPIC_NOTIFICATION_KEY = "broadcast-topic-notification-all"
-  val iteration="iteration"
-  val rawData="rawData"
-  val SENDER="sender"
-  val TOPIC="topic"
-  val OTP="otp"
-  val CONFIG="config"
-  val DELIVERY_TYPE="deliveryType"
-  val DELIVERY_MODE="mode"
+  val iteration = "iteration"
+  val rawData = "rawData"
+  val SENDER = "sender"
+  val TOPIC = "topic"
+  val OTP = "otp"
+  val CONFIG = "config"
+  val DELIVERY_TYPE = "deliveryType"
+  val DELIVERY_MODE = "mode"
   val X_REQUEST_ID = "X-Request-ID"
-  val X_TRACE_ENABLED  = "X-Trace-Enabled"
-  val VER="ver"
-  val ID="id"
-  val PDATA="pdata"
+  val X_TRACE_ENABLED = "X-Trace-Enabled"
+  val VER = "ver"
+  val ID = "id"
+  val PDATA = "pdata"
   val PRODUCER_ID = "NS"
-  val TYPE="type"
-  val OBJECT="object"
+  val TYPE = "type"
+  val OBJECT = "object"
   val TYPE_VALUE = "TopicNotifyAll"
-  val ACTOR="actor"
-  val EDATA="edata"
-  val EID="eid"
-  val TRACE="trace"
-  val CONTEXT="context"
-  val MID="mid"
-  val NOTIFICATION="notification"
+  val ACTOR = "actor"
+  val EDATA = "edata"
+  val EID = "eid"
+  val TRACE = "trace"
+  val CONTEXT = "context"
+  val MID = "mid"
+  val NOTIFICATION = "notification"
   val last_access_time_gap_millis = 259200000
   val courseId = "courseId"
   val RESULT = "result"
@@ -150,9 +150,13 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   val USER_KEYWORD = "user"
   val _FIRSTNAME = "_firstname"
   val _LASTNAME = "_lastname"
-  val EMAIL_TEMPLATE = "firstcourse"
-  val EMAIL_SUBJECT = "Thank You!"
-  val CONTENT_SEARCH_FIELDS = "name"
+  val FIRST_COURSE_EMAIL_TEMPLATE = "firstcourse"
+  val FIRST_COURSE_EMAIL_SUBJECT = "Thank You!"
+  val CONTENT_SEARCH_FIELDS = "name,posterImage"
+  val COUNT = "count"
+  val SURNAME = "surname"
+  val FIRSTNAME = "firstname"
+  val courseSize = 3
 
   val IDENTIFIER = "identifier"
   val HIERARCHY = "hierarchy"
@@ -161,12 +165,12 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   val PROFILE_DETAILS_KEY = "profiledetails"
   val PERSONAL_DETAILS_KEY = "personalDetails"
   val INCOMPLETE_COURSES_MAIL_SUBJECT = "Complete the courses you started";
-  val INCOMPLETE_COURSES = "incompletecourses";
-  val emailWithUserId="emailWithUserId"
+  val INCOMPLETE_COURSES_TEMPLATE = "incompletecourses";
+  val emailWithUserId = "emailWithUserId"
 
   //ES
-  val sb_es_user_profile_index:String=config.getString("ES.sb_es_user_profile_index")
-  val es_profile_index_type:String=config.getString("ES.es_profile_index_type")
+  val sb_es_user_profile_index: String = config.getString("ES.sb_es_user_profile_index")
+  val es_profile_index_type: String = config.getString("ES.es_profile_index_type")
   val ES_HOST: String = config.getString("ES.host")
   val ES_PORT: String = config.getString("ES.port")
 
@@ -175,10 +179,10 @@ class NotificationEngineConfig(override val config: Config) extends BaseJobConfi
   val SEARCH_FIELDS: String = config.getString("fields.search_fields")
 
   //consumer Key
-  val incompleteCourseAlertMessageKey:String=config.getString("consumerKey.incomplete_course_alert_message_key")
-  val latestCourseAlertMessageKey:String=config.getString("consumerKey.latest_course_alert_message_key")
-  val firstCourseEnrolmentMessageKey:String=config.getString("consumerKey.first_course_enrolment_message_key")
-  val CHECK_NOTIFICATION_PREFERENCE_KEY="checkNotificationPreferenceKey"
+  val incompleteCourseAlertMessageKey: String = config.getString("consumerKey.incomplete_course_alert_message_key")
+  val latestCourseAlertMessageKey: String = config.getString("consumerKey.latest_course_alert_message_key")
+  val firstCourseEnrolmentMessageKey: String = config.getString("consumerKey.first_course_enrolment_message_key")
+  val CHECK_NOTIFICATION_PREFERENCE_KEY = "checkNotificationPreferenceKey"
 
   // Functions
   val NOTIFICATION_ENGINE_FUNCTION = "NotificationEngineFunction"

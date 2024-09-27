@@ -7,17 +7,19 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.kafka.common.serialization.StringSerializer
-import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.index.query.{BoolQueryBuilder, QueryBuilders}
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.slf4j.LoggerFactory
 import org.sunbird.dp.core.util.CassandraUtil
 import org.sunbird.dp.notification.domain.Event
 import org.sunbird.dp.notification.task.NotificationEngineConfig
-import org.sunbird.dp.notification.util.{IndexService, RestApiUtil}
+import org.sunbird.dp.notification.util.{KafkaMessageGenerator, RestApiUtil, UserUtilityService}
+
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.util
-import java.util.{Collections, Properties}
+import java.util.concurrent.TimeUnit
+import java.util.{Calendar, Collections, Properties}
 
 
 class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConfig)(implicit val mapTypeInfo: TypeInformation[Event]) {
@@ -46,19 +48,32 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
 
   private[this] val logger = LoggerFactory.getLogger(classOf[LatestCourseEmailNotificationFunction])
 
-  private var restApiUtil: RestApiUtil =  new RestApiUtil()
-  var cassandraUtil: CassandraUtil = new CassandraUtil(courseConfig.dbHost, courseConfig.dbPort)
+  private var restApiUtil: RestApiUtil = new RestApiUtil()
+  private var cassandraUtil: CassandraUtil = new CassandraUtil(courseConfig.dbHost, courseConfig.dbPort)
+
+  private val userUtil = new UserUtilityService(courseConfig)
+
+  private val kafkaMessageGenerator = new KafkaMessageGenerator(courseConfig)
 
   def initiateLatestCourseAlertEmail(): Unit = {
-    logger.info("latest course alert function started")
-    val newCourseData: NewCourseData = getLatestAddedCourses()
-    if (newCourseData != null && newCourseData.result.content.size() >= courseConfig.latest_courses_alert_content_min_limit) {
-      val coursesDataMapList: util.List[CoursesDataMap] = setCourseMap(newCourseData.result.content)
-      if (sendNewCourseEmail(coursesDataMapList)) {
-        updateEmailRecordInTheDatabase();
+    try {
+      logger.info("latest course alert function started")
+      val startTime = System.currentTimeMillis()
+      val newCourseData: NewCourseData = getLatestAddedCourses()
+      if (newCourseData != null && newCourseData.result.content.size() >= courseConfig.latest_courses_alert_content_min_limit) {
+        val coursesDataMapList: util.List[CoursesDataMap] = setCourseMap(newCourseData.result.content)
+        if (sendNewCourseEmail(coursesDataMapList)) {
+          updateEmailRecordInTheDatabase();
+        }
+      } else {
+        logger.info("There are no latest courses or number of latest courses are less than " + courseConfig.latest_courses_alert_content_min_limit)
       }
-    } else {
-      logger.info("There are no latest courses or number of latest courses are less than " + courseConfig.latest_courses_alert_content_min_limit)
+      val endTime = System.currentTimeMillis()
+      val elapsedSeconds = TimeUnit.MILLISECONDS.toSeconds(endTime - startTime)
+      logger.info(s"Completed Operation in $elapsedSeconds seconds")
+    } catch {
+      case e: Exception =>
+        logger.error(String.format("Error in get and set user email %s" + e.getMessage()))
     }
   }
 
@@ -91,8 +106,8 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
         return gson.fromJson(obj, classOf[NewCourseData])
       }
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.info(String.format("Error in get and set user email %s", e.getMessage()))
+      case e: Exception =>
+        logger.error(String.format("Error in get and set user email %s", e.getMessage()))
     }
     return null
   }
@@ -121,9 +136,8 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
     try {
       response = restApiUtil.post(uri, requestBody)
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.info("Error received: " + e.getMessage())
-        response = e.getMessage
+      case e: Exception =>
+        logger.error("Error received: " + e.getMessage())
     }
     response
   }
@@ -144,8 +158,8 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
           coursesDataMapList.add(coursesDataMap)
         }
       } catch {
-        case e: Exception => e.printStackTrace()
-          logger.info("Error while set course : " + e.getMessage())
+        case e: Exception =>
+          logger.error("Error while set course : " + e.getMessage())
       }
     }
     coursesDataMapList
@@ -181,7 +195,7 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
       }
       return isEmailSentToConfigMailIds
     } catch {
-      case e: Exception => e.printStackTrace()
+      case e: Exception =>
         logger.error("Error while sending New Course Email : " + e.getMessage())
     }
     return false
@@ -223,117 +237,86 @@ class LatestCourseEmailNotificationFunction(courseConfig: NotificationEngineConf
       val mail = courseConfig.MAIL_LIST.split(",", -1)
       mail.foreach(i => mails.add(i))
       mails.forEach(m => mailList.add(m))
-      sendNotification(mailList,params,courseConfig.SENDER_MAIL,courseConfig.notification_service_host+courseConfig.notification_event_endpoint,courseConfig.NEW_COURSES,courseConfig.NEW_COURSES_MAIL_SUBJECT)
-      return true
+      kafkaMessageGenerator.initiateKafkaMessage(mailList, courseConfig.NEW_COURSES_TEMPLATE, params, courseConfig.NEW_COURSES_MAIL_SUBJECT)
+      logger.info("Send notification to config based mail")
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.info(String.format("Failed during sending mail %s", e.getMessage()))
+      case e: Exception =>
+        logger.error(String.format("Failed during sending mail %s", e.getMessage()))
     }
-    return true
+    true
   }
 
   def fetchEmailIdsFromUserES(excludeEmailsList: util.List[Any], params: util.Map[String, Any]): Boolean = {
-    var result = new util.HashMap[String, Any]()
     logger.info("Entering fetchEmailIdsFromUserES")
     try {
       var count: Int = 1
       val limit: Int = 45
       var offset: Int = 0
-      var response = new SearchResponse()
+      var response = new util.ArrayList[util.HashMap[String, Any]]()
       while (offset < count) {
-        val emailWithUserId=new util.ArrayList[util.HashMap[String,Any]]
-        val query: BoolQueryBuilder = QueryBuilders.boolQuery()
+        val emailWithUserIdList = new util.ArrayList[util.HashMap[String, Any]]
         val finalQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
         finalQuery.must(QueryBuilders.matchQuery(courseConfig.STATUS, 1))
-          .must(QueryBuilders.matchQuery(courseConfig.IS_DELETED, false)).must(query)
+          .must(QueryBuilders.matchQuery(courseConfig.IS_DELETED, false))
         val sourceBuilder = new SearchSourceBuilder().query(finalQuery)
-        val excludeFields=new Array[String](0)
-        sourceBuilder.fetchSource(courseConfig.fields.split(",",-1),excludeFields)
+        sourceBuilder.fetchSource(courseConfig.fields.split(",", -1), null)
         sourceBuilder.from(offset)
         sourceBuilder.size(45)
-        val index = new IndexService(courseConfig)
-        response = index.getEsResult(courseConfig.sb_es_user_profile_index, courseConfig.es_profile_index_type, sourceBuilder, true)
-        response.getHits.forEach(hitDetails => {
-          result = hitDetails.getSourceAsMap().asInstanceOf[util.HashMap[String, Any]]
-          val userId = result.get(courseConfig.USERID).toString
-          if (result.containsKey(courseConfig.PROFILE_DETAILS)) {
-            val profileDetails: util.HashMap[String, Any] = result.get(courseConfig.PROFILE_DETAILS).asInstanceOf[util.HashMap[String, Any]]
-            if (profileDetails.containsKey(courseConfig.PERSONAL_DETAILS)) {
-              val personalDetails: util.HashMap[String, Any] = profileDetails.get(courseConfig.PERSONAL_DETAILS).asInstanceOf[util.HashMap[String, Any]]
-              if (MapUtils.isNotEmpty(personalDetails)) {
-                val email: String = personalDetails.get(courseConfig.PRIMARY_EMAIL).asInstanceOf[String]
-                if (StringUtils.isNotBlank(email) && !excludeEmailsList.contains(email)) {
-                  if (courseConfig.MAIL_LIST != null && !courseConfig.MAIL_LIST.contains(email)) {
-                    val emailWithUserIdMap = new util.HashMap[String,Any]()
-                    emailWithUserIdMap.put(userId,email)
-                    emailWithUserId.add(emailWithUserIdMap)
-                  } else {
-                    logger.info("Invalid Email :" + email)
-                  }
-                }
+        response = userUtil.getUserRecordsFromES(courseConfig.sb_es_user_profile_index, courseConfig.es_profile_index_type, sourceBuilder)
+        response.forEach(user => {
+          if (MapUtils.isNotEmpty(user)) {
+            val email: String = user.get(courseConfig.PRIMARY_EMAIL).asInstanceOf[String]
+            if (StringUtils.isNotBlank(email) && !excludeEmailsList.contains(email)) {
+              if (courseConfig.MAIL_LIST != null && !courseConfig.MAIL_LIST.contains(email)) {
+                val emailWithUserIdMap = new util.HashMap[String, Any]()
+                emailWithUserIdMap.put(user.get(courseConfig.USERID).toString, email)
+                emailWithUserIdList.add(emailWithUserIdMap)
+              } else {
+                logger.info("Invalid Email :" + email)
               }
             }
           }
         })
-        if (CollectionUtils.isNotEmpty(emailWithUserId)) {
+        if (CollectionUtils.isNotEmpty(emailWithUserIdList)) {
           val kafkaProducerProps = new Properties()
           kafkaProducerProps.put(courseConfig.bootstrap_servers, courseConfig.BOOTSTRAP_SERVER_CONFIG)
           kafkaProducerProps.put(courseConfig.key_serializer, classOf[StringSerializer])
           kafkaProducerProps.put(courseConfig.value_serializer, classOf[StringSerializer])
           val producer = new KafkaProducer[String, String](kafkaProducerProps)
           val producerData = new util.HashMap[String, Any]
-          producerData.put(courseConfig.MESSAGE,courseConfig.CHECK_NOTIFICATION_PREFERENCE_KEY)
-          producerData.put(courseConfig.emailWithUserId,emailWithUserId)
-          producerData.put(courseConfig.PARAMS,params)
-          producerData.put(courseConfig.emailTemplate, courseConfig.NEW_COURSES)
+          producerData.put(courseConfig.MESSAGE, courseConfig.CHECK_NOTIFICATION_PREFERENCE_KEY)
+          producerData.put(courseConfig.emailWithUserId, emailWithUserIdList)
+          producerData.put(courseConfig.PARAMS, params)
+          producerData.put(courseConfig.emailTemplate, courseConfig.NEW_COURSES_TEMPLATE)
           producerData.put(courseConfig.emailSubject, courseConfig.NEW_COURSES_MAIL_SUBJECT)
-          val gson=new Gson()
-          val jsonString=gson.toJson(producerData)
-          producer.send(new ProducerRecord[String, String](courseConfig.notification_Preference_Kafka_input_topic,  courseConfig.DATA, jsonString))
+          val gson = new Gson()
+          val jsonString = gson.toJson(producerData)
+          logger.info("Details sent to check notification preference")
+          producer.send(new ProducerRecord[String, String](courseConfig.notification_Preference_Kafka_input_topic, courseConfig.DATA, jsonString))
         }
         offset += limit
-        count = response.getHits.getTotalHits.toInt
+        count = response.get(0).get(courseConfig.COUNT).toString.toInt
       }
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.info(String.format("Failed during fetching mail %s", e.getMessage()))
+      case e: Exception =>
+        logger.error(String.format("Failed during fetching mail %s", e.getMessage()))
         return false
     }
-    return true
-  }
-
-  def sendNotification(sendTo: java.util.List[String], params: java.util.Map[String, Any], senderMail: String, notificationUrl: String, emailTemplate: String, emailSubject: String): Unit = {
-    logger.info("Entering SendNotification")
-    new Thread(new Runnable {
-      override def run(): Unit = {
-        try {
-          val notificationTosend: java.util.List[Any] = new java.util.ArrayList[Any](java.util.Arrays.asList(new Notification(courseConfig.EMAIL, courseConfig.MESSAGE, new EmailConfig(sender = senderMail, subject = emailSubject),
-            ids = sendTo, new Templates(data = null, id = emailTemplate, params = params))));
-          val notificationRequest: java.util.Map[String, Any] = new java.util.HashMap[String, Any]()
-          notificationRequest.put(courseConfig.REQUEST, new java.util.HashMap[String, java.util.List[Any]]() {
-            {
-              put(courseConfig.NOTIFICATIONS, notificationTosend)
-            }
-          })
-          restApiUtil.post(notificationUrl, notificationRequest)
-        } catch {
-          case e: Exception => e.printStackTrace()
-            logger.info(String.format("Failed during sending mail %s", e.getMessage()))
-        }
-      }
-    }).start()
+    true
   }
 
   def updateEmailRecordInTheDatabase(): Unit = {
     try {
-      val deleteQuery = QueryBuilder.delete().from(courseConfig.dbSunbirdKeyspace, courseConfig.EMAIL_RECORD_TABLE).where(QueryBuilder.eq(courseConfig.EMAIL_TYPE, courseConfig.NEW_COURSES_EMAIL)).toString
-      cassandraUtil.delete(deleteQuery)
-      val insertQuery = QueryBuilder.insertInto(courseConfig.dbSunbirdKeyspace, courseConfig.EMAIL_RECORD_TABLE)
-        .value(courseConfig.EMAIL_TYPE, courseConfig.NEW_COURSES_EMAIL).value(courseConfig.LAST_SENT_DATE, LocalDate.now().toString).toString
-      cassandraUtil.upsert(insertQuery)
+      val now = Calendar.getInstance().getTime()
+      val dateFormat = new SimpleDateFormat("dd-mm-yyyy")
+      val formattedDate = dateFormat.format(now)
+      val updateQuery = QueryBuilder.update(courseConfig.dbSunbirdKeyspace, courseConfig.EMAIL_RECORD_TABLE)
+        .`with`(QueryBuilder.set(courseConfig.LAST_SENT_DATE, formattedDate))
+        .where(QueryBuilder.eq(courseConfig.EMAIL_TYPE, courseConfig.NEW_COURSES_EMAIL)).toString
+      cassandraUtil.upsert(updateQuery)
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.info("Update Email Record in Data base failed " + e.getMessage)
+      case e: Exception =>
+        logger.error("Update Email Record in Data base failed " + e.getMessage)
     }
   }
 }

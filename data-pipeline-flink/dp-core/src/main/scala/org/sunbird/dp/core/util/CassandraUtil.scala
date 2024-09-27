@@ -44,11 +44,6 @@ class CassandraUtil(host: String, port: Int) {
     rs.wasApplied
   }
 
-  def delete(query: String): Boolean = {
-    session.execute(query)
-    true
-  }
-
   def getUDTType(keyspace: String, typeName: String): UserType = session.getCluster.getMetadata.getKeyspace(keyspace).getUserType(typeName)
 
   def reconnect(): Unit = {

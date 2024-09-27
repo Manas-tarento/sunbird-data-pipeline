@@ -3,7 +3,6 @@ package org.sunbird.notification.preference.function
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility
 import com.fasterxml.jackson.annotation.PropertyAccessor
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.gson.Gson
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -40,19 +39,20 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
 
   override def processElement(event: Event, context: ProcessFunction[Event, Event]#Context, metrics: Metrics): Unit = {
     try {
-      val message=event.message
-      if(message.equalsIgnoreCase(preferenceConfig.CHECK_NOTIFICATION_PREFERENCE_KEY)){
-        val emailWithUserId:util.List[util.HashMap[String,Any]]=event.emailWithUserId
-        val userIdList=new util.ArrayList[String]()
-        var userId: util.Set[String]=null
-        emailWithUserId.forEach(data=>{
-          userId= data.keySet()
+      logger.info("Validation of Notification Preference Started")
+      val message = event.message
+      if (message.equalsIgnoreCase(preferenceConfig.CHECK_NOTIFICATION_PREFERENCE_KEY)) {
+        val emailWithUserId: util.List[util.HashMap[String, Any]] = event.emailWithUserId
+        val userIdList = new util.ArrayList[String]()
+        var userId: util.Set[String] = null
+        emailWithUserId.forEach(data => {
+          userId = data.keySet()
           userId.forEach(id => {
             userIdList.add(id)
           })
         })
-        var enableEmailList=new util.ArrayList[String]()
-        if(CollectionUtils.isNotEmpty(userIdList)) {
+        var enableEmailList = new util.ArrayList[String]()
+        if (CollectionUtils.isNotEmpty(userIdList)) {
           enableEmailList = initiateNotificationPreferenceCheck(userIdList)
         }
         val finalEmailList = new util.ArrayList[String]()
@@ -79,29 +79,28 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
             })
           }
         }
-        if(CollectionUtils.isNotEmpty(finalEmailList)){
+        if (CollectionUtils.isNotEmpty(finalEmailList)) {
           val emailTemplate = event.emailTemplate
           val emailSubject = event.emailSubject
           val params = event.params
-          initiateKafkaMessage(finalEmailList,emailTemplate,params,emailSubject)
+          initiateKafkaMessage(finalEmailList, emailTemplate, params, emailSubject)
         }
       }
     }
     catch {
       case ex: Exception => {
-        ex.printStackTrace()
-        logger.info("Event throwing exception: "+ ex.getMessage)
+        logger.error("Event throwing exception: " + ex.getMessage)
       }
     }
   }
 
-  def initiateNotificationPreferenceCheck(userId: util.ArrayList[String]):util.ArrayList[String] = {
+  def initiateNotificationPreferenceCheck(userId: util.ArrayList[String]): util.ArrayList[String] = {
     try {
       logger.info("Entering checkNotificationPreferenceByUserId")
       val index = new IndexService(preferenceConfig)
       val query: BoolQueryBuilder = QueryBuilders.boolQuery()
       val finalQuery: BoolQueryBuilder = QueryBuilders.boolQuery()
-      finalQuery.must(QueryBuilders.termsQuery(preferenceConfig.USERID, userId)).must(QueryBuilders.termQuery(preferenceConfig.latestCourseAlert,true)).must(query)
+      finalQuery.must(QueryBuilders.termsQuery(preferenceConfig.USERID, userId)).must(QueryBuilders.termQuery(preferenceConfig.latestCourseAlert, true)).must(query)
       val sourceBuilder = new SearchSourceBuilder().query(finalQuery)
       sourceBuilder.fetchSource(preferenceConfig.USERID, new String())
       sourceBuilder.from(0)
@@ -109,7 +108,7 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
       val notificationPreferenceResponse = index.getEsResult(preferenceConfig.sb_es_user_notification_preference, preferenceConfig.es_preference_index_type, sourceBuilder, true)
       var preferenceResult = new util.HashMap[String, Any]()
       val enabledUserId = new util.ArrayList[String]
-      if(notificationPreferenceResponse.getHits.getTotalHits!=0){
+      if (notificationPreferenceResponse.getHits.getTotalHits != 0) {
         notificationPreferenceResponse.getHits.forEach(preferencehitDetails => {
           preferenceResult = preferencehitDetails.getSourceAsMap.asInstanceOf[util.HashMap[String, Any]]
           if (preferenceResult.containsKey(preferenceConfig.USERID)) {
@@ -118,11 +117,11 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
         })
       }
       return enabledUserId
-    }catch {
+    } catch {
       case ex: Exception => {
-        logger.info("Exception Occurs while getting users Notification Preference : ", ex.getMessage)
+        logger.error("Exception Occurs while getting users Notification Preference : ", ex.getMessage)
       }
-        return  null
+        return null
     }
   }
 
@@ -198,16 +197,16 @@ class NotificationPreferenceFunction(preferenceConfig: NotificationPreferenceCon
       }
       value = sb.toString()
     } catch {
-      case e: Exception => e.printStackTrace()
-        logger.error("Error while encrypting "+context, e);
+      case e: Exception =>
+        logger.error("Error while encrypting " + context, e);
         value = ""
     }
     value
   }
 
-  def sendMessageToKafkaTopic(producerData: util.HashMap[String, Any]) :Unit= {
+  def sendMessageToKafkaTopic(producerData: util.HashMap[String, Any]): Unit = {
     logger.info("Entering SendMessageKafkaTopic")
-    if(MapUtils.isNotEmpty(producerData)){
+    if (MapUtils.isNotEmpty(producerData)) {
       val kafkaProducerProps = new Properties()
       kafkaProducerProps.put(preferenceConfig.bootstrap_servers, preferenceConfig.BOOTSTRAP_SERVER_CONFIG)
       kafkaProducerProps.put(preferenceConfig.key_serializer, classOf[StringSerializer])

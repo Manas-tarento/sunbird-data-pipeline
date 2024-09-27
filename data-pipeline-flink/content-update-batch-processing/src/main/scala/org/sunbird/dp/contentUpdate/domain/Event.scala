@@ -1,14 +1,22 @@
-package org.sunbird.dp.notification.domain
+package org.sunbird.dp.contentUpdate.domain
 
 import org.sunbird.dp.core.domain.{Events, EventsPath}
 
 import java.util
 
 class Event(eventMap: util.Map[String, Any]) extends Events(eventMap) {
-  private val jobName = "notificationEngineJob"
+  private val jobName = "contentUpdateEvent"
 
-  def notification: util.HashMap[String, Any] = {
-    telemetry.read[util.HashMap[String, Any]]("notification").get
+  def identifier:String={
+    telemetry.read[String]("identifier").get
+  }
+
+  def averageRatingScore: Double = {
+    telemetry.read[Double]("averageRatingScore").get
+  }
+
+  def totalRatingsCount: Double = {
+    telemetry.read[Double]("totalRatingsCount").get
   }
 
   def markFailed(errorMsg: String): Unit = {

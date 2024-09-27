@@ -7,16 +7,16 @@ import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.dp.core.job.BaseJobConfig
 import org.sunbird.notification.preference.domain.Event
 
-class NotificationPreferenceConfig (override val config: Config) extends BaseJobConfig(config, "notificationPreference") {
+class NotificationPreferenceConfig(override val config: Config) extends BaseJobConfig(config, "notificationPreference") {
   private val serialVersionUID = 2905979434303791379L
 
   implicit val mapTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Kafka Topics Configuration
-  val inputTopic: String = config.getString("kafka.input.topic")
+  val inputTopic: String = config.getString("kafka.notification_preference_input.topic")
 
   //kafkaOutput topic
-  val NOTIFICATION_JOB_Topic: String = config.getString("kafka.notification_job_topic")
+  val NOTIFICATION_JOB_Topic: String = config.getString("kafka.notification_job.topic")
 
   val notificationPreferenceParallelism: Int = config.getInt("task.notificationPreference.parallelism")
   val kafkaIssueTopic: String = config.getString("kafka.output.topic")
@@ -25,14 +25,14 @@ class NotificationPreferenceConfig (override val config: Config) extends BaseJob
   val failedEvent: OutputTag[Event] = OutputTag[Event]("failed-notification-preference-events")
   val key_serializer: String = config.getString("kafka-key.key_serializer")
   val value_serializer: String = config.getString("kafka-key.value_serializer")
-  val bootstrap_servers:String=config.getString("kafka-key.bootstrap_servers")
-  val BOOTSTRAP_SERVER_CONFIG:String=config.getString("kafka.bootstrap_server")
+  val bootstrap_servers: String = config.getString("kafka-key.bootstrap_servers")
+  val BOOTSTRAP_SERVER_CONFIG: String = config.getString("kafka.bootstrap_server")
 
   //ES
   val sb_es_user_notification_preference: String = config.getString("ES.sb_es_user_notification_preference")
   val es_preference_index_type: String = config.getString("ES.es_preference_index_type")
-  val ES_HOST:String=config.getString("ES.host")
-  val ES_PORT:String=config.getString("ES.port")
+  val ES_HOST: String = config.getString("ES.host")
+  val ES_PORT: String = config.getString("ES.port")
 
   //Cassandra
   val dbHost: String = config.getString("ext-cassandra.host")
@@ -45,12 +45,12 @@ class NotificationPreferenceConfig (override val config: Config) extends BaseJob
   val notificationPreferenceFunction = "NotificationPreferenceFunction"
 
   //constant
-  val CHECK_NOTIFICATION_PREFERENCE_KEY="checkNotificationPreferenceKey"
-  val SENDER_MAIL:String=config.getString("senderMail.sender_mail")
+  val CHECK_NOTIFICATION_PREFERENCE_KEY = "checkNotificationPreferenceKey"
+  val SENDER_MAIL: String = config.getString("senderMail.sender_mail")
 
 
   //fields
-  val USERID="userId"
+  val USERID = "userId"
   val BROAD_CAST_TOPIC_NOTIFICATION_MESSAGE = "BroadCast Topic Notification"
   val ACTOR_TYPE_VALUE = "System"
   val EID_VALUE = "BE_JOB_REQUEST"
@@ -79,14 +79,14 @@ class NotificationPreferenceConfig (override val config: Config) extends BaseJob
   val TRACE = "trace"
   val CONTEXT = "context"
   val MID = "mid"
-  val PARAMS="params"
-  val DATA="data"
-  val TEMPLATE="template"
-  val IDS="ids"
-  val REQUEST="request"
-  val NOTIFICATION="notification"
-  val SUBJECT="subject"
+  val PARAMS = "params"
+  val DATA = "data"
+  val TEMPLATE = "template"
+  val IDS = "ids"
+  val REQUEST = "request"
+  val NOTIFICATION = "notification"
+  val SUBJECT = "subject"
   val EMAIL = "email"
-  val MESSAGE="message"
-  val latestCourseAlert="latestCourseAlert"
+  val MESSAGE = "message"
+  val latestCourseAlert = "latestCourseAlert"
 }

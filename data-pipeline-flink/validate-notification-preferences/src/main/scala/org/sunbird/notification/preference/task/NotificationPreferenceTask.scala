@@ -24,8 +24,8 @@ class NotificationPreferenceTask(config: NotificationPreferenceConfig, kafkaConn
 
     val stream =
       env.addSource(source, config.NotificationPreferenceConsumer).uid(config.NotificationPreferenceConsumer).rebalance()
-      .process(new NotificationPreferenceFunction(config)).setParallelism(config.notificationPreferenceParallelism)
-      .name(config.notificationPreferenceFunction).uid(config.notificationPreferenceFunction)
+        .process(new NotificationPreferenceFunction(config)).setParallelism(config.notificationPreferenceParallelism)
+        .name(config.notificationPreferenceFunction).uid(config.notificationPreferenceFunction)
     stream.getSideOutput(config.failedEvent).addSink(kafkaConnector.kafkaEventSink[Event](config.kafkaIssueTopic))
       .name(config.issueEventSink).uid(config.issueEventSink)
       .setParallelism(config.notificationPreferenceParallelism)

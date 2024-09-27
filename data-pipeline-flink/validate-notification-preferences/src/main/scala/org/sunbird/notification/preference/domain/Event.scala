@@ -20,13 +20,14 @@ class Event(eventMap: util.Map[String, Any]) extends Events(eventMap) {
     telemetry.read[String]("emailSubject").get
   }
 
-  def params:util.Map[String,Any]={
-    telemetry.read[util.Map[String,Any]]("params").get
+  def params: util.Map[String, Any] = {
+    telemetry.read[util.Map[String, Any]]("params").get
   }
 
-  def emailWithUserId:util.List[util.HashMap[String,Any]]={
-    telemetry.read[util.List[util.HashMap[String,Any]]]("emailWithUserId").get
+  def emailWithUserId: util.List[util.HashMap[String, Any]] = {
+    telemetry.read[util.List[util.HashMap[String, Any]]]("emailWithUserId").get
   }
+
   def markFailed(errorMsg: String): Unit = {
     telemetry.addFieldIfAbsent(EventsPath.FLAGS_PATH, new util.HashMap[String, Boolean])
     telemetry.addFieldIfAbsent("metadata", new util.HashMap[String, AnyRef])

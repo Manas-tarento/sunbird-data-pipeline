@@ -16,9 +16,10 @@ class NotificationEngineFunction(courseConfig: NotificationEngineConfig)(implici
 
   private[this] val logger = LoggerFactory.getLogger(classOf[NotificationEngineFunction])
 
-  override def metricsList():List[String] = {
+  override def metricsList(): List[String] = {
     List()
   }
+
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
   }
@@ -37,38 +38,38 @@ class NotificationEngineFunction(courseConfig: NotificationEngineConfig)(implici
                               context: ProcessFunction[Event, Event]#Context,
                               metrics: Metrics): Unit = {
     logger.info("NotificationEngine started")
-    val notifyMap=event.notification
-    val notificationType=notifyMap.get("type").asInstanceOf[String]
-    var data=new util.HashMap[String,Any]()
-    if(notifyMap.get("data")!=null){
-      data=notifyMap.get("data").asInstanceOf[util.HashMap[String,Any]]
+    val notifyMap = event.notification
+    val notificationType = notifyMap.get("type").asInstanceOf[String]
+    logger.info("NotificationEngine Type "+notificationType)
+    var data = new util.HashMap[String, Any]()
+    if (notifyMap.get("data") != null) {
+      data = notifyMap.get("data").asInstanceOf[util.HashMap[String, Any]]
     }
-    val incompleteCourse=new IncompleteCourseReminderEmailNotification(courseConfig)
-    val latestCourse=new LatestCourseEmailNotificationFunction(courseConfig)
-    val firstCourseEnrol=new FirstCourseEnrollmentFunction(courseConfig)
+    val incompleteCourse = new IncompleteCourseReminderEmailNotification(courseConfig)
+    val latestCourse = new LatestCourseEmailNotificationFunction(courseConfig)
+    val firstCourseEnrol = new FirstCourseEnrollmentFunction(courseConfig)
     try {
-      if(StringUtils.isNoneBlank(notificationType)){
-        if(notificationType.equalsIgnoreCase(courseConfig.incompleteCourseAlertMessageKey)) {
+      if (StringUtils.isNoneBlank(notificationType)) {
+        if (notificationType.equalsIgnoreCase(courseConfig.incompleteCourseAlertMessageKey)) {
           CompletableFuture.runAsync(() => {
             incompleteCourse.initiateIncompleteCourseEmailReminder()
           })
-        } else if(notificationType.equalsIgnoreCase(courseConfig.latestCourseAlertMessageKey)){
-          CompletableFuture.runAsync(()=>{
+        } else if (notificationType.equalsIgnoreCase(courseConfig.latestCourseAlertMessageKey)) {
+          CompletableFuture.runAsync(() => {
             latestCourse.initiateLatestCourseAlertEmail()
           })
-        } else if(notificationType.equalsIgnoreCase(courseConfig.firstCourseEnrolmentMessageKey)){
-          CompletableFuture.runAsync(()=>{
+        } else if (notificationType.equalsIgnoreCase(courseConfig.firstCourseEnrolmentMessageKey)) {
+          CompletableFuture.runAsync(() => {
             firstCourseEnrol.initiateFirstCourseEnrolmentNotification(data)
           })
         }
-        else{
-          logger.error("The Email Switch for this property is off/Invalid Kafka Msg",new Exception("The Email Switch for this property is off/Invalid Kafka Msg"))
+        else {
+          logger.error("The Email Switch for this property is off/Invalid Kafka Msg","The Email Switch for this property is off/Invalid Kafka Msg")
         }
       }
     } catch {
       case ex: Exception =>
-        ex.printStackTrace()
-        logger.info(ex.getMessage)
+        logger.error(ex.getMessage)
         event.markFailed(ex.getMessage)
         metrics.incCounter(courseConfig.failedEventCount)
     }
